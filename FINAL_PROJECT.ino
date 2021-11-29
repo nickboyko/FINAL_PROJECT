@@ -33,6 +33,11 @@ int centY = 48;
 uint8_t sides1 = 1;
 uint8_t sides2 = 1;
 
+unsigned long lastStepTime = 0;
+int currentStep = 0;
+int stepLength = 2000;
+int tempo = 120;
+
 bool buttonState[4] = { LOW, LOW, LOW, LOW };
 bool lastButtonState[4] = { LOW, LOW, LOW, LOW };
 
@@ -57,10 +62,11 @@ void setup(void) {
   button3.releaseHandler(onRelease);
   button4.pressHandler(onPress);
   button4.releaseHandler(onRelease);
-  
+
   tft.begin();
   Serial.println("init");
-  drawSides();
+  drawThings();
+  playNotes();
 }
 
 void loop() {
@@ -68,6 +74,7 @@ void loop() {
   button2.process();
   button3.process();
   button4.process();
+  playNotes();
 }
 
 void onPress(int val) {
@@ -75,18 +82,47 @@ void onPress(int val) {
   if (val == 1) if (sides1 > 1) sides1 = sides1 - 1;
   if (val == 2) if (sides2 > 1) sides2 = sides2 - 1;
   if (val == 3) if (sides2 < 12) sides2 = sides2 + 1;
-  drawSides();
+  stepLength = 2000/(sides1*sides2);
+  drawThings();
 }
 
 void onRelease() {
 }
 
-void drawSides() {
+void playNotes() {
+  if (millis() > lastStepTime + stepLength) {
+    lastStepTime = millis();
+    currentStep = currentStep + 1;
+    Serial.println(currentStep);
+    if (currentStep >= (sides1*sides2)) {
+      currentStep = 0;
+    }
+    for (int i = 0; i < (sides1*sides2); i++) {
+      if (currentStep == (i * sides2)) {
+        usbMIDI.sendNoteOff(45, 0, 1);
+        Serial.println("dum");
+        usbMIDI.sendNoteOn(45, 127, 1);
+      }
+      if (currentStep == (i * sides1)) {
+        usbMIDI.sendNoteOff(47, 0, 1);
+        Serial.println("da");
+        usbMIDI.sendNoteOn(47, 127, 1);
+      }
+    }
+  }
+}
+
+
+void drawThings() {
   Serial.println(sides1);
   tft.fillScreen(BLACK);
   tft.drawCircle(64, 48, 40, RED);
   polygon(sides1, GREEN, 4);
   polygon(sides2, BLUE, 2);
+  tft.setCursor(centX - 26, centY - 10);
+  tft.setTextColor(RED);
+  tft.setTextSize(3);
+  tft.print(tempo);
 }
 
 void polygon(uint8_t sides, uint16_t color, uint8_t cSize) {
