@@ -36,7 +36,7 @@ uint8_t sides2 = 1;
 unsigned long lastStepTime = 0;
 int currentStep = 0;
 int stepLength = 2000;
-int tempo = 120;
+int tempo = 180;
 
 bool buttonState[4] = { LOW, LOW, LOW, LOW };
 bool lastButtonState[4] = { LOW, LOW, LOW, LOW };
@@ -47,6 +47,11 @@ BetterButton button1(buttonArray[0], 0);
 BetterButton button2(buttonArray[1], 1);
 BetterButton button3(buttonArray[2], 2);
 BetterButton button4(buttonArray[3], 3);
+
+char rx_byte = 0;
+String rx_str = "";
+boolean not_number = false;
+int result;
 
 void setup(void) {
   Serial.begin(9600);
@@ -70,10 +75,28 @@ void setup(void) {
 }
 
 void loop() {
+  if (Serial.available() > 0) {
+    rx_byte = Serial.read();
+    if ((rx_byte >= '0') and (rx_byte <= '9')) {
+      rx_str += rx_byte;
+    } else if (rx_byte == '\n') {
+      if (not_number) {
+        Serial.println("Not a valid number");
+      } else {
+        tempo = rx_str.toInt();
+        Serial.print(tempo);
+      }
+      not_number = false;
+      rx_str = "";
+    } else {
+      not_number = true;
+    }
+  }
   button1.process();
   button2.process();
   button3.process();
   button4.process();
+  stepLength = (int) (60 * 4000 / tempo) / (sides1 * sides2);
   playNotes();
 }
 
@@ -82,7 +105,8 @@ void onPress(int val) {
   if (val == 1) if (sides1 > 1) sides1 = sides1 - 1;
   if (val == 2) if (sides2 > 1) sides2 = sides2 - 1;
   if (val == 3) if (sides2 < 12) sides2 = sides2 + 1;
-  stepLength = 2000/(sides1*sides2);
+
+  Serial.println((60 * 4000 / tempo) / (sides1 * sides2));
   drawThings();
 }
 
@@ -94,10 +118,10 @@ void playNotes() {
     lastStepTime = millis();
     currentStep = currentStep + 1;
     Serial.println(currentStep);
-    if (currentStep >= (sides1*sides2)) {
+    if (currentStep >= (sides1 * sides2)) {
       currentStep = 0;
     }
-    for (int i = 0; i < (sides1*sides2); i++) {
+    for (int i = 0; i < (sides1 * sides2); i++) {
       if (currentStep == (i * sides2)) {
         usbMIDI.sendNoteOff(45, 0, 1);
         Serial.println("dum");
@@ -111,7 +135,6 @@ void playNotes() {
     }
   }
 }
-
 
 void drawThings() {
   Serial.println(sides1);
